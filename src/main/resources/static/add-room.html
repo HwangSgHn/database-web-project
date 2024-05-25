@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>원룸 추가</title>
+  <style>
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+    label {
+      margin-top: 10px;
+    }
+    input, select, textarea {
+      margin-top: 5px;
+      padding: 8px;
+      width: 300px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .checkbox-group {
+      display: block;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .checkbox-group label {
+      display: block;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .checkbox-group input {
+      margin-top: 5px;
+      padding: 8px;
+      width: 20px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      margin-right: 5px;
+    }
+
+    .other-option {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .other-option input[type="text"] {
+      display: none;
+      margin-top: 0;
+      width: auto;
+    }
+
+  </style>
+</head>
+<body>
+<h1>원룸 추가</h1>
+<form id="addRoomForm">
+
+  <label for="name">원룸명:</label>
+  <input type="text" id="name" name="name" required>
+
+  <label for="latitude">위도:</label>
+  <input type="number" id="latitude" name="latitude" step="any" min="33" max="39" required>
+
+  <label for="longitude">경도:</label>
+  <input type="number" id="longitude" name="longitude" step="any" min="124" max="132" required>
+
+  <label for="elevator">엘베:</label>
+  <select id="elevator" name="elevator" required>
+    <option value="true">O</option>
+    <option value="false">X</option>
+  </select>
+
+  <label for="parking">주차:</label>
+  <select id="parking" name="parking" required>
+    <option value="true">O</option>
+    <option value="false">X</option>
+  </select>
+
+  <label>옵션:</label>
+  <div class="checkbox-group">
+    <label><input type="checkbox" name="option" value="냉장고">냉장고</label>
+    <label><input type="checkbox" name="option" value="세탁기">세탁기</label>
+    <label><input type="checkbox" name="option" value="가스레인지/인덕션">가스레인지/인덕션</label>
+    <label><input type="checkbox" name="option" value="전자레인지">전자레인지</label>
+    <label><input type="checkbox" name="option" value="옷장">옷장</label>
+    <label><input type="checkbox" name="option" value="책상&의자">책상&의자</label>
+    <label><input type="checkbox" name="option" value="에어컨">에어컨</label>
+    <label><input type="checkbox" name="option" value="침대">침대</label>
+    <label><input type="checkbox" name="option" value="TV">TV</label>
+    <label class="other-option">
+      <input type="checkbox" name="option" value="기타" id="otherOption">기타
+      <input type="text" id="otherText" name="otherOptionText" placeholder="기타 옵션을 입력하세요">
+    </label>
+  </div>
+
+  <button type="submit">제출</button>
+</form>
+
+<script>
+
+  document.getElementById('otherOption').addEventListener('change', function() {
+    const otherText = document.getElementById('otherText');
+    if (this.checked) {
+      otherText.style.display = 'block';
+    } else {
+      otherText.style.display = 'none';
+    }
+  });
+
+  document.getElementById('addRoomForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+    const plainFormData = Object.fromEntries(formData.entries());
+
+    let options = formData.getAll('option');
+    let optionStr = '';
+    options.forEach((option) => optionStr += option + ',');
+    plainFormData.option = optionStr.substring(0, optionStr.length - 1);
+
+    fetch('/api/room', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(plainFormData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      window.close();
+    })
+    .catch(error => {
+      console.error('Error adding room:', error);
+      alert('원룸 추가에 실패했습니다.');
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>양도 글 수정</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+    label {
+      margin-top: 10px;
+    }
+    input, textarea {
+      margin-top: 5px;
+      padding: 10px;
+      width: 100%;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+<h1>양도 글 수정</h1>
+<form id="updateTransferForm" enctype="multipart/form-data">
+  <input id="transfer_id" name="transfer_id" hidden="hidden">
+
+  <label for="title">제목:</label>
+  <input type="text" id="title" name="title" required>
+
+  <label for="comment">내용:</label>
+  <textarea id="comment" name="comment" rows="5" required></textarea>
+
+  <label for="picture">사진(8MB이하):</label>
+  <input type="file" id="picture" name="picture" accept="image/*">
+
+  <button type="submit">수정하기</button>
+</form>
+
+<script>
+
+  function getTransferIdFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('transfer_id');
+  }
+
+  function getTitleFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('title');
+  }
+
+  function getCommentFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('comment');
+  }
+
+  window.onload = function() {
+    let transfer_id = getTransferIdFromUrl();
+    let title = getTitleFromUrl();
+    let comment = getCommentFromUrl();
+
+    document.getElementById('transfer_id').value = transfer_id;
+    document.getElementById('title').value = title;
+    document.getElementById('comment').value = comment;
+  }
+
+  document.getElementById('updateTransferForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    const transfer_id = getTransferIdFromUrl();
+    const formData = new FormData(event.target);
+    console.log(formData);
+
+    fetch(`/api/transfer/update`, {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => {
+      if(response.ok) {
+        window.location.href = `transfer-detail.html?transferId=${transfer_id}`;
+      } else {
+        alert('양도 글 수정에 실패했습니다.');
+      }
+    })
+    .catch(error => {
+      console.error('Error updating tranfer:', error);
+    });
+  });
+</script>
+</body>
+</html>

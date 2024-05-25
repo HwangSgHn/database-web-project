@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>리뷰 작성</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+    label {
+      margin-top: 10px;
+    }
+    input, select, textarea {
+      margin-top: 5px;
+      padding: 8px;
+      width: 300px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+<h1>리뷰 작성</h1>
+<form id="reviewForm">
+  <input type="hidden" id="room_id" name="room_id">
+
+  <label for="rating">평점:</label>
+  <input type="number" step="0.1" id="rating" name="rating" min="0" max="5" required>
+
+  <label for="deposit">보증금:</label>
+  <input type="number" id="deposit" name="deposit" min="0" required>
+
+  <label for="monthly">월세:</label>
+  <input type="number" id="monthly" name="monthly" min="0" required>
+
+  <label for="floor">층:</label>
+  <input type="number" id="floor" name="floor" required>
+
+  <label for="pyeong">평:</label>
+  <input type="number" id="pyeong" name="pyeong" min="0" required>
+
+  <label for="kitchen_sep">주방 분리:</label>
+  <select id="kitchen_sep" name="kitchen_sep" required>
+    <option value="true">예</option>
+    <option value="false">아니오</option>
+  </select>
+
+  <label for="middle_door">중문:</label>
+  <select id="middle_door" name="middle_door" required>
+    <option value="true">예</option>
+    <option value="false">아니오</option>
+  </select>
+
+  <label for="water_press">수압:</label>
+  <select id="water_press" name="water_press" required>
+    <option value="0">상</option>
+    <option value="1">중</option>
+    <option value="2">하</option>
+  </select>
+
+  <label for="review_comment">리뷰 코멘트:</label>
+  <textarea id="review_comment" name="review_comment" rows="5"></textarea>
+
+  <button type="submit">제출</button>
+</form>
+
+<script>
+
+  function getRoomIdFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('room_id');
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const roomId = getRoomIdFromUrl();
+    document.getElementById('room_id').value = roomId;
+  });
+
+  document.getElementById('reviewForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const reviewData = Object.fromEntries(formData.entries());
+
+    fetch('/api/review', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(reviewData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      window.close();
+    })
+    .catch(error => {
+      console.error('Error submitting review:', error);
+      alert('리뷰 제출에 실패했습니다.');
+    });
+  });
+</script>
+</body>
+</html>

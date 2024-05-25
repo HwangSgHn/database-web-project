@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>양도 게시판</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .transfer-card {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+    .transfer-card img {
+      max-width: 100px;
+      margin-right: 15px;
+    }
+    .transfer-card h3 {
+      margin: 0;
+    }
+    .transfer-card p {
+      margin: 5px 0;
+    }
+    .header button {
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .header button {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .header button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+<div class="header">
+  <h1>양도 게시판</h1>
+  <button id="button">양도 게시글 추가</button>
+</div>
+<div id="transfersList">
+  <input id="room_id" name="room_id" hidden="hidden">
+
+</div>
+
+<script>
+
+  function getRoomIdFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('room_id');
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const roomId = getRoomIdFromUrl();
+    document.getElementById('button').onclick = function() {
+      window.location.href = `add-transfer.html?room_id=${roomId}`;
+    }
+
+    fetch(`/api/transfer/room/${roomId}`)
+    .then(response => response.json())
+    .then(data => {
+      const transfersList = document.getElementById('transfersList');
+      transfersList.innerHTML = '';
+
+      data.forEach(transfer => {
+        const card = document.createElement('div');
+        card.className = 'transfer-card';
+        const pictureData = `data:image/${transfer.pictureMimeType};base64,${transfer.picture}`;
+        if (transfer.picture === null) {
+          card.innerHTML = `
+                            <div>
+                                <h3>${transfer.title}</h3>
+                                <p>${transfer.comment.substring(0, 100)}...</p>
+                                <button onclick="viewTransferDetail(${transfer.transfer_id})">상세히</button>
+                            </div>
+                        `;
+        } else {
+          card.innerHTML = `
+                            <img src="${pictureData}" alt="이미지 없음">
+                            <div>
+                                <h3>${transfer.title}</h3>
+                                <p>${transfer.comment.substring(0, 100)}...</p>
+                                <button onclick="viewTransferDetail(${transfer.transfer_id})">상세히</button>
+                            </div>
+                        `;
+        }
+        transfersList.appendChild(card);
+      });
+    })
+    .catch(error => {
+      console.error('Error fetching transfers:', error);
+    });
+  })
+
+  function viewTransferDetail(transferId) {
+    window.location.href = `transfer-detail.html?transferId=${transferId}`;
+  }
+</script>
+</body>
+</html>

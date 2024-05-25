@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+  <title>구해줘,홈즈-전북대편</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId="></script>
+</head>
+<style>
+  body, html {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    min-width: 1230px;
+  }
+  #header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #ddd;
+    height: 60px;
+  }
+  .filter-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .filter-container input, .filter-container select, .test button {
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  .test button {
+    background-color: #4CAF50;
+    color: white;
+    white-space: nowrap;
+  }
+  .test button:hover {
+    background-color: #45a049;
+  }
+  .divider {
+    border-left: 1px solid #ddd;
+    height: 40px;
+    margin: 0 20px;
+  }
+  #map {
+    height: 100%;
+    width: 100%;
+    float:right;
+  }
+  #options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  #options label {
+    display: flex;
+    align-items: center;
+  }
+  .stars-outer {
+    display: inline-block;
+    position: relative;
+    font-family: FontAwesome;
+  }
+  .stars-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    color: #f8ce0b;
+  }
+  .stars-outer::before {
+    content: "\f005 \f005 \f005 \f005 \f005";
+    color: #ccc;
+    font-size: 16px;
+  }
+  .stars-inner::before {
+    content: "\f005 \f005 \f005 \f005 \f005";
+    font-size: 16px;
+  }
+  .sidebar {
+    width: 150px;
+    height: calc(100% - 90px);
+    position: fixed;
+    top: 80px;
+    left: 0;
+    background-color: #f8f8f8;
+    overflow-y: auto;
+    transition: transform 0.3s ease;
+    transform: translateX(0);
+    z-index: 2;
+    border: black;
+  }
+  .sidebar.active {
+    transform: translateX(-150px);
+  }
+  #toggleSidebar {
+    position: fixed;
+    top: 90px;
+    left: 10px;
+    z-index: 3;
+    display: block;
+    margin-bottom: 10px;
+    background-color: #ffffff;
+    color: green;
+  }
+</style>
+<body>
+<div class="test" id="header">
+  <button id="saveRoomButton" onclick="saveRoomWithOptions()">원룸 추가</button>
+  <div class="divider"></div>
+  <form id="searchFilterForm" enctype="multipart/form-data">
+    <div class="filter-container">
+      <select id="rating" name="rating">
+        <option value="0">최소 평점</option>
+        <option value="2">★★</option>
+        <option value="3">★★★</option>
+        <option value="4">★★★★</option>
+      </select>
+      <input type="number" id="deposit" name="deposit" placeholder="보증금(단위:만)" min="0">
+      <input type="number" id="monthly" name="monthly" placeholder="월세(단위:만)" min="0">
+      <select id="area" name="area">
+        <option value="0">전용면적</option>
+        <option value="3">3평 이하</option>
+        <option value="6">3평 ~ 6평</option>
+        <option value="9">6평 ~ 9평</option>
+        <option value="12">9평 이상</option>
+      </select>
+      <div id="options">
+        <label><input type="checkbox" name="options" value="냉장고"> 냉장고</label>
+        <label><input type="checkbox" name="options" value="세탁기"> 세탁기</label>
+        <label><input type="checkbox" name="options" value="가스레인지/인덕션"> 가스레인지/인덕션</label>
+        <label><input type="checkbox" name="options" value="전자레인지"> 전자레인지</label>
+        <label><input type="checkbox" name="options" value="옷장"> 옷장</label>
+        <label><input type="checkbox" name="options" value="책상&의자"> 책상&의자</label>
+        <label><input type="checkbox" name="options" value="에어컨"> 에어컨</label>
+        <label><input type="checkbox" name="options" value="침대"> 침대</label>
+        <label><input type="checkbox" name="options" value="TV"> TV</label>
+      </div>
+      <button type="submit">검색</button>
+    </div>
+  </form>
+</div>
+<div id="sidebar" class="sidebar">
+  <div style="position: fixed; top: 100px" id="roomList"></div>
+</div>
+<div class="test">
+  <button class="test" id="toggleSidebar"><</button>
+</div>
+<div class="test" id="map"></div>
+
+<script>
+  var map = new naver.maps.Map('map', {
+    center: new naver.maps.LatLng(35.841192, 127.131732),
+    zoom: 16
+  });
+
+  var markers = [],
+      infoWindows = [];
+
+  var currentInfoWindow = null;
+
+  async function fetchRooms() {
+    try {
+      const response = await fetch('/api/rooms');
+      const rooms = await response.json();
+
+      await addMarkersAndInfoWindows(rooms);
+
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+    }
+  }
+
+  function getStarWidth(rating) {
+    const starPercentage = (rating / 5) * 100;
+    return `${starPercentage}%`;
+  }
+
+  async function addMarkersAndInfoWindows(rooms) {
+
+    for (const [index, room] of rooms.entries()) {
+      var marker = new naver.maps.Marker({
+        position: new naver.maps.LatLng(room.latitude, room.longitude),
+        map: map
+      });
+
+      var optionStr = await fetchOptions(room.room_id);
+
+      var elevator = '';
+      var parking = '';
+      var waterPress = '';
+      if (room.elevator === 1) {
+        elevator += 'O';
+      } else {
+        elevator += 'X';
+      }
+      if (room.parking === 1) {
+        parking += 'O';
+      } else {
+        parking += 'X';
+      }
+      if (Math.round(room.water_press) === 0) {
+        waterPress += '상';
+      } else if (Math.round(room.water_press) === 1) {
+        waterPress += '중';
+      } else if (Math.round(room.water_press) === 2) {
+        waterPress += '하';
+      }
+
+      var starWidth = getStarWidth(room.rating);
+
+      var infoWindow;
+      if (room.rating === -1) {
+        infoWindow = new naver.maps.InfoWindow({
+          content: '<div style="width:150px;text-align:center;padding:10px;">원룸명 : ' + room.name + '</div>' +
+              '<div style="width:150px;text-align:center;padding:10px;">엘베/주차 : ' + elevator + '/' + parking + '</div>' +
+              '<div style="width:150px;text-align:center;padding:10px;">옵션 : ' + optionStr + '</div>' +
+              '<div style="width:150px;text-align:center;padding:10px;">' +
+              '<button onclick="writeReview(' + room.room_id +')">리뷰 작성</button>' +
+              '<button style="margin: 5px;" onclick="viewTransferPost(' + room.room_id +')">양도 글 보기</button>' +
+              '</div>'
+        });
+      } else {
+        infoWindow = new naver.maps.InfoWindow({
+          content: '<div style="width:150px;text-align:center;padding:10px;">원룸명 : ' + room.name + '</div>' +
+              '<div style="width:150px;text-align:center;padding:10px;">평점 : ' +
+              '<div class="stars-outer"><div class="stars-inner" style="width: ' + starWidth + ';"></div></div>' +
+              '</div>' +
+              '<div style="width:150px;text-align:center;padding:10px;">엘베/주차 : ' + elevator + '/' + parking + '</div>' +
+              '<div style="width:150px;text-align:center;padding:10px;">보증금 : ' + room.minDeposit + ' ~ ' + room.maxDeposit + '</div>' +
+              '<div style="width:150px;text-align:center;padding:10px;">월세 : ' + room.minMonthly + ' ~ ' + room.maxMonthly + '</div>' +
+              '<div style="width:150px;text-align:center;padding:10px;">수압 : ' + waterPress + '</div>' +
+              '<div style="width:150px;text-align:center;padding:10px;">옵션 : ' + optionStr + '</div>' +
+              '<div style="width:150px;text-align:center;padding:10px;">' +
+              '<button onclick="writeReview(' + room.room_id +')">리뷰 작성</button>' +
+              '<button onclick="viewTransferPost(' + room.room_id +')">양도 글 보기</button>' +
+              '<button onclick="viewDetailedReview(' + room.room_id +')">상세리뷰</button>' +
+              '</div>'
+        });
+      }
+
+      markers.push(marker);
+      infoWindows.push(infoWindow);
+
+      naver.maps.Event.addListener(marker, 'click', getClickHandler(index));
+
+      var roomList = document.getElementById('roomList');
+
+      var card = document.createElement('div');
+      card.style.width = '150px';
+      card.className = 'test';
+
+      card.innerHTML = '<button>' + room.name + '</button>' + '<hr>';
+      roomList.appendChild(card);
+
+      card.querySelector('button').addEventListener('click', getClickHandler(index));
+    };
+
+  }
+
+  function saveRoomWithOptions() {
+    const url = 'add-room.html';
+    const name = '원룸 추가';
+    const specs = 'width=500,height=700,scrollbars=yes';
+    window.open(url, name, specs);
+  }
+
+  function writeReview(roomId) {
+    const url = 'add-review.html?room_id=' + roomId;
+    const name = '리뷰 작성';
+    const specs = 'width=500,height=700,scrollbars=yes';
+    window.open(url, name, specs);
+  }
+
+  function viewTransferPost(roomId) {
+    const url = 'transfer.html?room_id=' + roomId;
+    const name = '양도 게시판';
+    const specs = 'width=800,height=600,scrollbars=yes';
+    window.open(url, name, specs);
+  }
+
+  function viewDetailedReview(roomId) {
+    const url = 'detailedReview.html?room_id=' + roomId;
+    const name = '상세리뷰';
+    const specs = 'width=800,height=600,scrollbars=yes';
+    window.open(url, name, specs);
+  }
+
+  async function fetchOptions(roomId) {
+    var optionStr = '';
+    try {
+      const optionResponse = await fetch(`/api/options/${roomId}`);
+      const options = await optionResponse.json();
+
+      options.forEach(function (option) {
+        optionStr += option.furniture + ', ';
+      });
+      return optionStr.slice(0, -2);
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+    }
+  }
+
+  naver.maps.Event.addListener(map, 'idle', function() {
+    updateMarkers(map, markers);
+  });
+
+  function updateMarkers(map, markers) {
+
+    var mapBounds = map.getBounds();
+    var marker, position;
+
+    for (var i = 0; i < markers.length; i++) {
+
+      marker = markers[i]
+      position = marker.getPosition();
+
+      if (mapBounds.hasLatLng(position)) {
+        showMarker(map, marker);
+      } else {
+        hideMarker(map, marker);
+      }
+    }
+  }
+
+  function showMarker(map, marker) {
+    if (marker.setMap()) return;
+    marker.setMap(map);
+  }
+
+  function hideMarker(map, marker) {
+
+    if (!marker.setMap()) return;
+    marker.setMap(null);
+  }
+
+  function getClickHandler(seq) {
+    return function(e) {
+      var marker = markers[seq],
+          infoWindow = infoWindows[seq];
+
+      if (infoWindow.getMap()) {
+        infoWindow.close();
+      } else {
+        infoWindow.open(map, marker);
+        var location = new naver.maps.LatLng(marker.position.lat() + 0.003, marker.position.lng());
+        map.setCenter(location);
+        currentInfoWindow = infoWindow;
+      }
+    }
+  }
+
+  document.getElementById('searchFilterForm').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const formData = new FormData();
+
+    let rating = document.getElementById("rating").value;
+    let deposit = document.getElementById("deposit").value;
+    let monthly = document.getElementById("monthly").value;
+    let area = document.getElementById("area").value;
+    let option = Array.from(document.querySelectorAll('input[name="options"]:checked')).map(option => option.value);
+    if (deposit === '') {
+      deposit = 100000;
+    }
+    if (monthly === '') {
+      monthly = 1000;
+    }
+
+    formData.append("rating", rating);
+    formData.append("deposit", deposit);
+    formData.append("monthly", monthly);
+    formData.append("area", area);
+    formData.append("option", option);
+
+    try {
+      const response = await fetch('/api/rooms', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        alert('필터 검색에 실패했습니다.');
+        throw new Error('Network response was not ok');
+      }
+
+      const rooms = await response.json();
+
+      clearMarkers();
+      await addMarkersAndInfoWindows(rooms);
+
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  });
+
+  function clearMarkers() {
+    markers.forEach(marker => marker.setMap(null));
+    infoWindows.forEach(infoWindow => infoWindow.close());
+    markers = [];
+    infoWindows = [];
+    const roomList = document.getElementById('roomList');
+    roomList.innerHTML = "";
+
+  }
+
+  naver.maps.Event.addListener(map, 'click', function() {
+    if (currentInfoWindow) {
+      currentInfoWindow.close();
+      currentInfoWindow = null;
+    }
+  });
+
+  document.getElementById('toggleSidebar').addEventListener('click', function() {
+    if (document.getElementById('toggleSidebar').textContent === '<') {
+      document.getElementById('toggleSidebar').textContent = '>';
+    } else {
+      document.getElementById('toggleSidebar').textContent = '<';
+    }
+    document.getElementById('sidebar').classList.toggle('active');
+  });
+
+  fetchRooms();
+</script>
+</body>
+</html>

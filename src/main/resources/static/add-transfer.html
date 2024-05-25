@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>양도 게시글 추가</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+    label {
+      margin-top: 10px;
+    }
+    input, textarea {
+      margin-top: 5px;
+      padding: 10px;
+      width: 100%;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+<h1>양도 게시글 추가</h1>
+<form id="addTransferForm" enctype="multipart/form-data">
+  <input id="room_id" name="room_id" hidden="hidden">
+
+  <label for="title">제목:</label>
+  <input type="text" id="title" name="title" required>
+
+  <label for="comment">내용:</label>
+  <textarea id="comment" name="comment" rows="5" required></textarea>
+
+  <label for="picture">사진(8MB이하):</label>
+  <input type="file" id="picture" name="picture" accept="image/*">
+
+  <button type="submit">추가하기</button>
+</form>
+
+<script>
+
+  function getRoomIdFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('room_id');
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const roomId = getRoomIdFromUrl();
+    document.getElementById('room_id').value = roomId;
+  })
+
+  document.getElementById('addTransferForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+
+    fetch('/api/transfer', {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => {
+      if (response.ok) {
+        window.location.href = 'transfer.html?room_id=' + document.getElementById('room_id').value;
+      } else {
+        alert('양도 게시글 추가에 실패했습니다.');
+      }
+    })
+    .catch(error => {
+      console.error('Error adding transfer:', error);
+      alert('양도 게시글 추가에 실패했습니다.');
+    });
+  });
+</script>
+</body>
+</html>
