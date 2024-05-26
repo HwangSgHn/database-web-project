@@ -159,7 +159,9 @@
 <script>
   var map = new naver.maps.Map('map', {
     center: new naver.maps.LatLng(35.841192, 127.131732),
-    zoom: 16
+    zoom: 16,
+    maxZoom: 18,
+    minZoom: 14
   });
 
   var markers = [],
@@ -351,7 +353,11 @@
         infoWindow.close();
       } else {
         infoWindow.open(map, marker);
-        var location = new naver.maps.LatLng(marker.position.lat() + 0.003, marker.position.lng());
+        var zoom = map.getZoom();
+        var bias = 0.001;
+        if (zoom < 16)
+          bias = 0.0023;
+        var location = new naver.maps.LatLng(marker.position.lat() + bias * (19 - zoom), marker.position.lng());
         map.setCenter(location);
         currentInfoWindow = infoWindow;
       }
