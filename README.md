@@ -25,7 +25,7 @@ application.properties
   spring.datasource.password=your_db_password
    ```
 
-index.html
+index.html & add-room.html
    ```bash
   ncpClientId=your_naver_Application_key_Client_ID
    ```
